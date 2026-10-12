@@ -7,10 +7,14 @@ add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_target_dependencies REQUIRED)
 find_package(rclcpp REQUIRED)
 
 # Find the other dependencies [geometry_msgs and turtlesim]
-# TODO here!
+# CMake locates the required packages
+find_package(geometry_msgs REQUIRED)
+find_package(turtlesim REQUIRED)
+find_package(turtlesim_msgs REQUIRED)
 
 # Adding new node turtle_square
 add_executable(turtle_square src/turtle_square.cpp)
@@ -19,7 +23,13 @@ add_executable(turtle_square src/turtle_square.cpp)
 # ament_target_dependencies function.
 # Remember to link the dependencies, you should write:
 # ament_target_dependencies(target_name dependency1 dependency2 ...)
-# TODO here!
+# Connects the rtarget (what we are trying to make here which is turtle_square)
+# to the dependencies so that turtle_square can use them
+target_link_libraries(turtle_square
+  rclcpp::rclcpp
+  geometry_msgs::geometry_msgs
+  turtlesim_msgs::turtlesim_msgs
+)
 
 # Install the executable to the lib/${PROJECT_NAME} directory
 install(

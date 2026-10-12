@@ -1,9 +1,10 @@
 #include <chrono>
 #include <memory>
+#include <functional>
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "turtlesim/msg/pose.hpp"
+#include "turtlesim_msgs/msg/pose.hpp"
 
 // Allows us to use literals for time units
 using namespace std::chrono_literals;
@@ -17,11 +18,16 @@ class TurtleSquareNode : public rclcpp::Node {
     // Create the publisher for velocity commands [binded to
     // geometry_msgs::msg::Twist message] For simplicity, publish on
     // "/turtle1/cmd_vel"
-    // TODO here!
+    //TODO:: This created a publisher that sends velocity commands to the turtle
+    velocity_pub = this->create_publisher<geometry_msgs::msg::Twist>("/turtle1/cmd_vel", 10);
 
-    // Create the subscriber for the turtle pose [binded to turtlesim::msg::Pose
+    // Create the subscriber for the turtle pose [binded to turtlesim_msgs::msg::Pose
     // message] For simplicity, subscribe to "/turtle1/pose"
-    // TODO here!
+    // TODO:: Creates a subscriber to the turtle's pose topic. Whenever a pose message arrives,
+    // ROS calls pose_callback() and passes the received message to it
+    position_sub = this->create_subscription<turtlesim_msgs::msg::Pose>("/turtle1/pose", 10,
+        std::bind(&TurtleSquareNode::pose_callback, this, std::placeholders::_1)
+    );
 
     // Create the timer for the control loop
     // The timer is set to call the timer_callback function every 1millisecond
@@ -62,9 +68,32 @@ class TurtleSquareNode : public rclcpp::Node {
 
     current_time += dt;
 
-    // TODO here!
+    float v = 0.0f;
+    float w = 0.0f;
+
+    // if 0 (forward) set v = trans_vel and w = 0
+    if(state==0){
+        v = trans_vel;
+        w = 0.0f;
+        if(current_time >= side_length/trans_vel){
+          state = 1;
+          current_time = 0.0f;
+        }
+    } else {
+      v = 0;
+      w = rot_vel;
+      if(current_time >= angle_to_turn/rot_vel){
+        state = 0;
+        current_time = 0.0f;
+      }
+    }
+
 
     // velocity_pub->publish(velocity_message);
+    geometry_msgs::msg::Twist velocity_message;
+    velocity_message.linear.x = v;
+    velocity_message.angular.z = w;
+    velocity_pub->publish(velocity_message);
   }
 
   /**
@@ -72,15 +101,22 @@ class TurtleSquareNode : public rclcpp::Node {
    * Once the turtle pose is received, print the turtle pose on the console
    * using RCLCPP_INFO macro. If you have problems, you might also use std::cout
    */
-  void pose_callback(const turtlesim::msg::Pose::SharedPtr msg) {
+  void pose_callback(const turtlesim_msgs::msg::Pose::SharedPtr msg) {
     // TODO here!
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Turtle pose: x=%.2f, y=%.2f, theta=%.2f",
+      msg->x,
+      msg->y,
+      msg->theta
+    );
   }
   // Timer
   rclcpp::TimerBase::SharedPtr timer;
   // Velocity publisher
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocity_pub;
   // Position subscriber
-  rclcpp::Subscription<turtlesim::msg::Pose>::SharedPtr position_sub;
+  rclcpp::Subscription<turtlesim_msgs::msg::Pose>::SharedPtr position_sub;
 
   // Simulation parameters
   const float dt = 1e-3;  // timer_callback is called every 0.001 seconds [if
